@@ -1,0 +1,8 @@
+customer_name,email,age,city,purchase_amount
+Rahul Sharma,rahul@gmail.com,22.0,Delhi,1500.0
+Priya Verma,priya@gmail.com,25.0,Mumbai,2200.0
+Amit Kumar,amit@gmail.com,25.0,Delhi,1800.0
+Neha Singh,neha@gmail.com,28.0,Bangalore,3000.0
+Rohit Mehta,,30.0,Jaipur,2500.0
+Anjali Gupta,anjali@gmail.com,24.0,Delhi,0.0
+Karan Malhotra,karan@gmail.com,27.0,Mumbai,3500.0
