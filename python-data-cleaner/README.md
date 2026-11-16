@@ -56,3 +56,21 @@ python-data-cleaner/
 ## Author
 
 Kunal Rana
+
+## Additional Features
+
+- Supports CSV and XLSX input files.
+- Validates file paths and file formats.
+- Handles missing values and duplicate records.
+- Generates a cleaning report.
+- Exports cleaned data into CSV and Excel formats.
+- Uses modular functions for better code organization.
+- Includes error handling for common input problems.
+
+## Output Files
+
+After execution, the output folder contains:
+
+- clean_data.csv
+- clean_data.xlsx
+- cleaning_report.txt

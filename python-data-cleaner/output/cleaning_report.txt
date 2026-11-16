@@ -1,0 +1,15 @@
+
+========== DATA CLEANING REPORT ==========
+
+Original rows: 8
+Final rows: 7
+
+Duplicates found: 1
+Duplicates remaining: 0
+
+Missing values before: 3
+Missing values after: 0
+
+Rows removed: 1
+
+==========================================

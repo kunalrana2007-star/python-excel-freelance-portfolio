@@ -1,87 +1,199 @@
+
 import pandas as pd
-import os
-
-file_path = input("enter yout file path: ")
-
-if file_path.lower().endswith(".csv"):
-    df = pd.read_csv(file_path)
-elif file_path.lower().endswith(".xlsx"):
-    df = pd.read_excel(file_path)
-
-else:
-    print("Unsupported file path")
-    exit()
-print("\n file loaded successfully")
+from pathlib import Path
 
 
-# 1. Display first 5 rows
-print("\n--- FIRST 5 ROWS ---")
-print(df.head())
+# 1. PROJECT PATHS
+BASE_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = BASE_DIR / "output"
 
-# 2. Check rows and columns
-print("\n--- DATASET SHAPE ---")
-print(df.shape)
-
-# 3. Check missing values
-print("\n--- MISSING VALUES ---")
-print(df.isnull().sum())
-
-# 4. Check duplicate rows
-print("\n--- DUPLICATE ROWS ---")
-print(df.duplicated().sum())
-
-# 5. Check data types
-print("\n--- DATA TYPES ---")
-print(df.dtypes)
-
-# 6. Standardize the column name
-df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-
-print("\n--- CLEANED COLUMN NAMES ---")
-print(df.columns.tolist())
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 
-# 7. Remove extra spaces from text columns
-for column in df.select_dtypes(include="object").columns:
-    df[column] = df[column].str.strip()
+# 2. READ INPUT FILE
 
-print("\n--- SPACES REMOVED ---")
-print(df.head())
+def load_file():
 
-# 8. Check missing values
-print("\n--- MISSING VALUES BEFORE CLEANING ---")
-print(df.isnull().sum())
+    file_path = input("\nEnter your file path: ").strip().strip('"')
 
-# 9. Fill missing age with median age
-df["age"] = df["age"].fillna(df["age"].median())
+    path = Path(file_path).expanduser()
 
-# 10. Fill missing email with a placeholder
-df["email"] = df["email"].fillna("Not Provided")
+    # Resolve relative paths from project folder
+    if not path.is_absolute():
+        path = BASE_DIR / path
 
-# 11. Fill missing purchase amount with 0
-df["purchase_amount"] = df["purchase_amount"].fillna(0)
+    if not path.exists():
+        raise FileNotFoundError("File does not exist!")
 
-print("\n--- MISSING VALUES AFTER CLEANING ---")
-print(df.isnull().sum())
+    if path.suffix.lower() == ".csv":
+        df = pd.read_csv(path)
 
+    elif path.suffix.lower() == ".xlsx":
+        df = pd.read_excel(path)
 
-# 12. Count duplicates before cleaning
-print("\nDuplicates before cleaning:", df.duplicated().sum())
+    else:
+        raise ValueError("Only CSV and XLSX files are supported.")
 
-# 13. Remove duplicate records
-df = df.drop_duplicates()
+    print("\nFile loaded successfully!")
 
-# 14. Count duplicates after cleaning
-print("Duplicates after cleaning:", df.duplicated().sum())
-
-# 15. Display updated dataset size
-print("Final dataset shape:", df.shape)
+    return df
 
 
-os.makedirs("output",exist_ok=True)
-df.to_csv("output/clean_data.csv",index=False)
-df.to_excel("output/clean_data.xlsx",index=False)
+# 3. INSPECT DATASET
 
-print("\n--- EXPORT SUCCESSFUL ---")
-print("Cleaned CSV: output/cleaned_data.csv")
-print("Cleaned Excel: output/cleaned_data.xlsx")
+def inspect_data(df):
+
+    print("\n--- FIRST 5 ROWS ---")
+    print(df.head())
+
+    print("\n--- DATASET SHAPE ---")
+    print(df.shape)
+
+    print("\n--- DATA TYPES ---")
+    print(df.dtypes)
+
+    print("\n--- MISSING VALUES ---")
+    print(df.isnull().sum())
+
+
+# 4. CLEAN DATASET
+
+def clean_data(df):
+
+    # Standardize column names
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
+
+    # Remove extra spaces from text values
+    for column in df.select_dtypes(include="object").columns:
+        df[column] = df[column].str.strip()
+
+    # Convert empty strings into missing values
+    df = df.replace(r"^\s*$", pd.NA, regex=True)
+
+    # Capture statistics BEFORE cleaning missing values
+    original_rows = len(df)
+    missing_before = int(df.isnull().sum().sum())
+    duplicates_before = int(df.duplicated().sum())
+
+    print("\n--- MISSING VALUES BEFORE CLEANING ---")
+    print(df.isnull().sum())
+
+    # Handle missing values
+    for column in df.columns:
+
+        if column == "email":
+            df[column] = df[column].fillna("Not Provided")
+
+        elif column == "purchase_amount":
+            df[column] = df[column].fillna(0)
+
+        elif pd.api.types.is_numeric_dtype(df[column]):
+
+            median_value = df[column].median()
+
+            if pd.notna(median_value):
+                df[column] = df[column].fillna(median_value)
+
+            else:
+                df[column] = df[column].fillna(0)
+
+        else:
+            df[column] = df[column].fillna("Unknown")
+
+    print("\n--- MISSING VALUES AFTER CLEANING ---")
+    print(df.isnull().sum())
+
+    # Remove duplicate records
+    df = df.drop_duplicates()
+
+    # Capture final statistics
+    final_rows = len(df)
+    missing_after = int(df.isnull().sum().sum())
+    duplicates_after = int(df.duplicated().sum())
+
+    # Create report information
+    report = f"""
+========== DATA CLEANING REPORT ==========
+
+Original rows: {original_rows}
+Final rows: {final_rows}
+
+Duplicates found: {duplicates_before}
+Duplicates remaining: {duplicates_after}
+
+Missing values before: {missing_before}
+Missing values after: {missing_after}
+
+Rows removed: {original_rows - final_rows}
+
+==========================================
+"""
+
+    return df, report
+
+
+# 5. EXPORT CLEANED DATA
+
+def export_data(df, report):
+
+    # Export CSV
+    csv_path = OUTPUT_DIR / "clean_data.csv"
+    df.to_csv(csv_path, index=False)
+
+    # Export Excel
+    excel_path = OUTPUT_DIR / "clean_data.xlsx"
+    df.to_excel(excel_path, index=False)
+
+    # Save cleaning report
+    report_path = OUTPUT_DIR / "cleaning_report.txt"
+    report_path.write_text(report, encoding="utf-8")
+
+    print("\n--- EXPORT SUCCESSFUL ---")
+    print(f"CSV: {csv_path}")
+    print(f"Excel: {excel_path}")
+    print(f"Report: {report_path}")
+
+
+# 6. MAIN PROGRAM
+
+def main():
+
+    try:
+
+        # Load dataset
+        df = load_file()
+
+        # Inspect original dataset
+        inspect_data(df)
+
+        # Clean dataset
+        cleaned_df, report = clean_data(df)
+
+        # Display report in terminal
+        print(report)
+
+        # Export cleaned files
+        export_data(cleaned_df, report)
+
+        print("\nData cleaning process completed successfully!")
+
+    except FileNotFoundError as error:
+        print("\nFile Error:", error)
+
+    except ValueError as error:
+        print("\nInput Error:", error)
+
+    except pd.errors.EmptyDataError:
+        print("\nError: The CSV file is empty.")
+
+    except Exception as error:
+        print("\nUnexpected Error:", error)
+
+
+if __name__ == "__main__":
+    main()
